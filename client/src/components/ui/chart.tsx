@@ -241,44 +241,135 @@ export function CandlestickChart({
       options,
     });
 
-    // Custom drawing for grid levels
+    // Custom drawing for candlesticks and grid levels
     const originalDraw = chartInstance.current.draw;
     chartInstance.current.draw = function() {
       originalDraw.call(this);
       
-      if (gridLevels.length > 0) {
-        const chart = this;
-        const ctx = chart.ctx;
-        const yScale = chart.scales.y;
-        const xScale = chart.scales.x;
-        
-        // Draw grid levels
+      const chart = this;
+      const ctx = chart.ctx;
+      const yScale = chart.scales.y;
+      const xScale = chart.scales.x;
+      
+      // Draw candlesticks if we have candle data
+      if (candles && candles.length > 0) {
+        candles.forEach((candle, index) => {
+          const timestamp = new Date(candle.date).getTime();
+          const x = xScale.getPixelForValue(timestamp);
+          const openY = yScale.getPixelForValue(candle.open);
+          const highY = yScale.getPixelForValue(candle.high);
+          const lowY = yScale.getPixelForValue(candle.low);
+          const closeY = yScale.getPixelForValue(candle.close);
+          
+          const isGreen = candle.close >= candle.open;
+          const bodyTop = Math.min(openY, closeY);
+          const bodyBottom = Math.max(openY, closeY);
+          const bodyHeight = Math.abs(closeY - openY);
+          
+          ctx.save();
+          
+          // Draw wick (high-low line)
+          ctx.strokeStyle = isGreen ? '#22c55e' : '#ef4444';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, highY);
+          ctx.lineTo(x, lowY);
+          ctx.stroke();
+          
+          // Draw candlestick body
+          const candleWidth = Math.max(3, Math.min(12, (xScale.right - xScale.left) / Math.max(candles.length, 20) * 0.8));
+          const halfWidth = candleWidth / 2;
+          
+          if (bodyHeight > 1) {
+            if (isGreen) {
+              // Green candle - hollow body
+              ctx.fillStyle = 'rgba(34, 197, 94, 0.1)';
+              ctx.strokeStyle = '#22c55e';
+              ctx.lineWidth = 1;
+            } else {
+              // Red candle - filled body
+              ctx.fillStyle = '#ef4444';
+              ctx.strokeStyle = '#ef4444';
+            }
+            
+            ctx.fillRect(x - halfWidth, bodyTop, candleWidth, bodyHeight);
+            ctx.strokeRect(x - halfWidth, bodyTop, candleWidth, bodyHeight);
+          } else {
+            // Doji - draw horizontal line for same open/close
+            ctx.strokeStyle = isGreen ? '#22c55e' : '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - halfWidth, openY);
+            ctx.lineTo(x + halfWidth, openY);
+            ctx.stroke();
+          }
+          
+          ctx.restore();
+        });
+      }
+      
+      // Draw grid levels
+      if (gridLevels && gridLevels.length > 0) {
         gridLevels.forEach(level => {
           const y = yScale.getPixelForValue(level.price);
           
           ctx.save();
-          ctx.strokeStyle = 'rgba(93, 107, 138, 0.9)';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([5, 5]);
+          
+          // Line style based on filled status
+          if (level.filled) {
+            ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)'; // Transparent green for filled
+            ctx.lineWidth = 2;
+          } else {
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.8)'; // Gray for unfilled
+            ctx.lineWidth = 1;
+          }
+          
+          ctx.setLineDash([5, 3]);
           ctx.beginPath();
           ctx.moveTo(xScale.left, y);
           ctx.lineTo(xScale.right, y);
           ctx.stroke();
+          
+          // Price label with background
+          const labelText = `$${level.price.toFixed(4)}`;
+          const textWidth = ctx.measureText(labelText).width;
+          
+          ctx.fillStyle = level.filled 
+            ? 'rgba(34, 197, 94, 0.9)' 
+            : 'rgba(51, 65, 85, 0.9)';
+          ctx.fillRect(xScale.right - textWidth - 12, y - 8, textWidth + 8, 14);
+          
+          ctx.fillStyle = level.filled ? '#ffffff' : '#e2e8f0';
+          ctx.font = '10px monospace';
+          ctx.fillText(labelText, xScale.right - textWidth - 8, y + 1);
+          
           ctx.restore();
         });
+      }
+      
+      // Draw current price line
+      if (currentPrice) {
+        const currentY = yScale.getPixelForValue(currentPrice);
+        ctx.save();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(xScale.left, currentY);
+        ctx.lineTo(xScale.right, currentY);
+        ctx.stroke();
         
-        // Draw current price line
-        if (currentPrice) {
-          const y = yScale.getPixelForValue(currentPrice);
-          ctx.save();
-          ctx.strokeStyle = 'hsl(190, 85%, 50%)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(xScale.left, y);
-          ctx.lineTo(xScale.right, y);
-          ctx.stroke();
-          ctx.restore();
-        }
+        // Current price label with background
+        const priceText = `$${currentPrice.toFixed(4)}`;
+        const priceTextWidth = ctx.measureText(priceText).width;
+        
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+        ctx.fillRect(xScale.right - priceTextWidth - 12, currentY - 8, priceTextWidth + 8, 14);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText(priceText, xScale.right - priceTextWidth - 8, currentY + 1);
+        ctx.restore();
       }
     };
 
