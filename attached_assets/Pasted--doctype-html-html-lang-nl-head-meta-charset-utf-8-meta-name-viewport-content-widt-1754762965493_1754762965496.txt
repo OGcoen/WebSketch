@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Coin‑M Grid Lab — 1D Candles, Range & Allocatie</title>
+<style>
+:root{
+  --bg:#0b1020; --panel:#0f172a; --card:#111a2c; --ink:#e5e7eb; --muted:#9ca3af;
+  --acc1:#7c3aed; --acc2:#06b6d4; --grid:#5d6b8a; --pos:#10b981; --neg:#ef4444;
+  --br:#1c2742;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0b1020,#0d1328 55%,#0b1224);
+ color:var(--ink); font:14px/1.5 system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif}
+a{color:var(--acc2); text-decoration:none}
+.wrap{max-width:1250px;margin:0 auto;padding:20px}
+header.hero{background:
+ radial-gradient(1200px 300px at 20% 0%,rgba(124,58,237,.18),transparent 50%),
+ radial-gradient(800px 200px at 80% 0%,rgba(6,182,212,.15),transparent 50%);
+ border:1px solid #18203a; border-radius:18px; padding:18px 18px 14px; margin-bottom:16px}
+.hero h1{margin:0;font-size:22px; letter-spacing:.2px}
+.hero p{margin:6px 0 0;color:var(--muted)}
+.grid{display:grid; gap:12px}
+@media(min-width:980px){ .grid.cols-3{grid-template-columns: 1.15fr 1.7fr 1.15fr} }
+.card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.06));
+ border:1px solid var(--br); border-radius:16px; padding:14px; box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.card h3{margin:0 0 8px; font-size:14px; letter-spacing:.2px; color:#cbd5e1}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+label{font-size:12px; color:#a7b0c0; display:block; margin-bottom:6px}
+input,select,textarea{
+  background:#0c1428; color:var(--ink);
+  border:1px solid #1d2947; border-radius:10px; padding:8px 10px; width:100%;
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:#2b3b66; box-shadow:0 0 0 2px rgba(124,58,237,.25)}
+small{color:var(--muted)}
+.btn{border:1px solid #253456; background:#0d172c; color:#dbe2ee; padding:8px 12px; border-radius:10px; cursor:pointer}
+.btn.p{background:linear-gradient(90deg,rgba(124,58,237,.9),rgba(6,182,212,.9)); border-color:transparent}
+.btn.ghost{background:transparent}
+.kpi{font-size:22px; font-weight:700}
+.mono{font-variant-numeric:tabular-nums}
+hr.sep{border:none;border-top:1px solid #172342; margin:10px 0}
+.table{width:100%; border-collapse:collapse; font-size:13px}
+.table th,.table td{border-top:1px solid #16213f; padding:8px; text-align:left}
+.table thead th{border-top:none; color:#9fb0c7; background:#0c152a}
+.badge{display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border:1px solid #28365e; border-radius:999px; font-size:12px}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.canvas-wrap{position:relative; width:100%; height:520px; background:#0a1326; border:1px solid #1b2746; border-radius:12px; overflow:hidden}
+.canvas-wrap .layer{position:absolute; inset:0}
+.legend{display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:#9fb0c7; font-size:12px}
+.legend .dot{width:10px;height:10px;border-radius:3px}
+.dot.price{background:#7c88ff} .dot.grid{background:#5d6b8a} .dot.cap{background:#36d1b2} .dot.roi{background:#a855f7}
+.slider{appearance:none; width:100%; height:6px; background:#16213f; border-radius:6px; outline:none}
+.slider::-webkit-slider-thumb{appearance:none; width:14px;height:14px;background:linear-gradient(180deg,#7c3aed,#06b6d4); border-radius:50%}
+.help{color:#8aa0c0; font-size:12px}
+.inline{display:inline-flex; gap:8px; align-items:center}
+.divider{height:1px;background:#172342; margin:10px 0}
+.right{ text-align:right }
+.toolbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.toolbar .seg button{padding:6px 10px;border:1px solid #263457;background:#0b152b;color:#cfe0ff;border-radius:8px;cursor:pointer}
+.toolbar .seg button.active{background:#1b2542;color:#fff;border-color:#324570}
+.gutterNote{position:absolute; right:8px; top:8px; color:#8093b7; font-size:11px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Coin‑M Grid Lab</h1>
+      <p>Handmatige 1D‑candles tekenen, je gridrange en allocatie bepalen (q/p), kapitaal‑verloop en totale ROI visualiseren. Geen API nodig.</p>
+    </header>
+
+    <div class="grid cols-3">
+      <!-- Controls -->
+      <section class="card">
+        <h3>Instellingen</h3>
+        <div class="row">
+          <div style="flex:1 1 120px">
+            <label>Symbool</label>
+            <input id="symbol" value="LINKUSD (Coin‑M)" />
+          </div>
+          <div style="flex:1 1 120px">
+            <label>Contract value (USD/contract)</label>
+            <input id="cv" type="number" step="0.0001" value="10" />
+            <small class="help">Inverse futures multiplier (bijv. 10, 50, 100)</small>
+          </div>
+        </div>
+
+        <hr class="sep">
+
+        <h3>Range & Grids</h3>
+        <div class="row">
+          <div style="flex:1 1 100px">
+            <label>Range low</label>
+            <input id="rangeLow" type="number" step="0.0001" value="10" />
+          </div>
+          <div style="flex:1 1 100px">
+            <label>Range high</label>
+            <input id="rangeHigh" type="number" step="0.0001" value="15" />
+          </div>
+        </div>
+        <div class="row">
+          <div style="flex:1 1 100px">
+            <label>Aantal treden (N)</label>
+            <input id="N" type="number" step="1" value="12" />
+          </div>
+          <div style="flex:1 1 100px">
+            <label>Totaal contracts (K_tot)</label>
+            <input id="Ktot" type="number" step="1" value="200" />
+          </div>
+        </div>
+
+        <hr class="sep">
+        <h3>Allocatie‑factoren</h3>
+        <div class="row">
+          <div style="flex:1 1 100px">
+            <label>Allocatie‑modus</label>
+            <select id="allocMode">
+              <option value="geom">Geometrisch (q)</option>
+              <option value="depth">Diepte in ATR (p)</option>
+            </select>
+          </div>
+          <div style="flex:1 1 100px">
+            <label>q (groeifactor)</label>
+            <input id="q" type="number" step="0.01" value="1.22" />
+            <small class="help">>1 = zwaarder onderin</small>
+          </div>
+          <div style="flex:1 1 100px">
+            <label>ATR% (handmatig)</label>
+            <input id="atrp" type="number" step="0.01" value="2.50" />
+          </div>
+          <div style="flex:1 1 100px">
+            <label>p (diepte‑exponent)</label>
+            <input id="p" type="number" step="0.1" value="1.8" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="inline">
+            <input id="roundInt" type="checkbox" checked />
+            <label for="roundInt">Afronden op hele contracts</label>
+          </div>
+          <div class="inline">
+            <input id="drawMode" type="checkbox" />
+            <label for="drawMode">Chart tekenen (1D): klik open, dan close</label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="row">
+          <button id="recalc" class="btn p">Recalc allocatie</button>
+          <button id="addCandle" class="btn">+ Candle</button>
+          <button id="clearC" class="btn ghost">Wissen candles</button>
+        </div>
+
+        <div class="divider"></div>
+        <h3>Dummy seed</h3>
+        <div class="row">
+          <div style="flex:1 1 100px">
+            <label>Gemiddelde prijs (seed)</label>
+            <input id="seedAvg" type="number" step="0.0001" value="13.0" />
+          </div>
+          <div style="flex:1 1 100px">
+            <label>Aantal dagen</label>
+            <input id="seedN" type="number" step="1" value="90" />
+          </div>
+          <div style="flex:1 1 100px">
+            <label>Volatiliteit (0..1)</label>
+            <input id="seedVol" type="number" step="0.05" value="0.35" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="seed" class="btn">Seed candles</button>
+        </div>
+      </section>
+
+      <!-- Price & grids -->
+      <section class="card" style="grid-column: span 1 / span 1">
+        <h3>Koers & Gridlevels</h3>
+        <div class="legend" style="margin-bottom:6px">
+          <span class="dot price"></span> 1D Candles
+          <span class="dot grid"></span> Gridlevels & contracts
+        </div>
+        <div class="canvas-wrap">
+          <div class="gutterNote">Rechts: contracts per level (groen: unfilled, transparant groen: filled)</div>
+          <canvas id="chartPrice" class="layer"></canvas>
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <div class="inline">
+            <label>Scrub dag</label>
+            <input id="scrub" class="slider" type="range" min="0" max="0" value="0" />
+          </div>
+          <div class="inline">
+            <label>Huidige prijs</label>
+            <input id="cursorPrice" type="number" step="0.0001" value="13.25" />
+          </div>
+          <div class="inline">
+            <label>Sluitprijs (USD)</label>
+            <input id="closePrice" type="number" step="0.0001" value="13.25" />
+          </div>
+        </div>
+      </section>
+
+      <!-- KPIs charts -->
+      <section class="card" style="grid-column: span 1 / span 1">
+        <div class="toolbar" style="justify-content:space-between">
+          <h3 style="margin:0">Kapitaal‑verloop</h3>
+          <div class="seg" id="tfCap">
+            <button data-n="30" class="active">1M</button>
+            <button data-n="90">3M</button>
+            <button data-n="365">1Y</button>
+            <button data-n="0">MAX</button>
+          </div>
+        </div>
+        <div class="canvas-wrap" style="height:260px">
+          <canvas id="chartCap" class="layer"></canvas>
+        </div>
+
+        <div class="toolbar" style="justify-content:space-between; margin-top:12px">
+          <h3 style="margin:0">Totale ROI</h3>
+          <div class="seg" id="tfROI">
+            <button data-n="30" class="active">1M</button>
+            <button data-n="90">3M</button>
+            <button data-n="365">1Y</button>
+            <button data-n="0">MAX</button>
+          </div>
+        </div>
+        <div class="canvas-wrap" style="height:260px">
+          <canvas id="chartROI" class="layer"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <section class="card">
+        <h3>Grid‑allocatie</h3>
+        <table class="table" id="tblAlloc">
+          <thead><tr><th>#</th><th>Prijs</th><th>Contracts</th><th>Gewicht</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h3>Candles (1D — handmatig/tekenen)</h3>
+        <table class="table" id="tblCandles">
+          <thead><tr><th>#</th><th>Datum</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const fmt = (n,d=4)=> isFinite(n)? Number(n).toLocaleString(undefined,{maximumFractionDigits:d}):"-";
+  const clamp = (v,min,max)=> Math.max(min, Math.min(max, v));
+  function parseNum(v){ const n = Number(String(v).replace(",", ".")); return isFinite(n)? n : NaN; }
+
+  // Elements
+  const el = {
+    rangeLow: $('#rangeLow'), rangeHigh: $('#rangeHigh'), N: $('#N'), Ktot: $('#Ktot'),
+    allocMode: $('#allocMode'), q: $('#q'), atrp: $('#atrp'), p: $('#p'),
+    roundInt: $('#roundInt'),
+    recalc: $('#recalc'),
+    seed: $('#seed'), seedAvg: $('#seedAvg'), seedN: $('#seedN'), seedVol: $('#seedVol'),
+    addC: $('#addCandle'), clearC: $('#clearC'),
+    chartPrice: $('#chartPrice'), chartCap: $('#chartCap'), chartROI: $('#chartROI'),
+    scrub: $('#scrub'), cursorPrice: $('#cursorPrice'), closePrice: $('#closePrice'),
+    tblAlloc: $('#tblAlloc tbody'), tblCandles: $('#tblCandles tbody'),
+    drawMode: $('#drawMode'), cv: $('#cv'),
+    tfCap: $('#tfCap'), tfROI: $('#tfROI')
+  };
+
+  // State
+  let candles = []; // [{t,o,h,l,c}]
+  let levels = [];  // [{i,price,weight,k}]
+  let pendingOpen = null; // for draw mode (price value)
+  let lastScale = {lo:10, hi:15, X0:50, X1:0, Y0:10, Y1:0}; // for coordinate mapping
+  let tfCapN = 30, tfROIN = 30;
+
+  // Canvas helpers -----------------------------------------------------------
+  function autoPixelRatio(canvas){
+    const dpr = window.devicePixelRatio||1;
+    const {width, height} = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height= Math.max(1, Math.floor(height* dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return ctx;
+  }
+
+  // Price & grids ------------------------------------------------------------
+  function drawPrice(){
+    const ctx = autoPixelRatio(el.chartPrice);
+    const W = el.chartPrice.clientWidth, H = el.chartPrice.clientHeight;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#0a1326'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = '#132048'; ctx.lineWidth = 1;
+    // Right gutter for boxes
+    const gutter = 80;
+    const X0 = 50, X1 = W - 10 - gutter, Y0 = 10, Y1 = H - 30;
+
+    // Determine price bounds
+    const valid = candles.filter(k=> isFinite(k?.o)&&isFinite(k?.h)&&isFinite(k?.l)&&isFinite(k?.c));
+    const prices = [];
+    valid.forEach(k=>{prices.push(k.h,k.l)});
+    levels.forEach(l=>prices.push(l.price));
+    let minP = Math.min(...prices, parseNum(el.rangeLow.value)||10);
+    let maxP = Math.max(...prices, parseNum(el.rangeHigh.value)||15);
+    const pad = (maxP-minP)*0.08 || 1;
+    const lo = minP - pad, hi = maxP + pad;
+
+    const n = valid.length;
+    const step = (X1 - X0) / Math.max(1,n);
+    const xAt = i => X0 + i*step + step*0.5;
+    const yAt = p => Y1 - (p - lo) / (hi - lo) * (Y1 - Y0);
+    lastScale = {lo, hi, X0, X1, Y0, Y1};
+
+    // grid lines
+    for(let i=0;i<6;i++){ const y=(Y1-Y0)*i/5 + Y0; ctx.beginPath(); ctx.moveTo(X0,y); ctx.lineTo(X1+gutter,y); ctx.stroke(); }
+
+    // y labels
+    ctx.fillStyle='#8aa0c0'; ctx.font='12px system-ui';
+    for(let i=0;i<6;i++){ const p = lo + (hi-lo)*i/5; ctx.fillText(fmt(p,4), 4, yAt(p)+4); }
+
+    // Draw grid levels
+    ctx.strokeStyle = 'rgba(93,107,138,0.9)'; ctx.lineWidth = 1;
+    levels.forEach(l=>{
+      const y=yAt(l.price);
+      ctx.beginPath(); ctx.moveTo(X0,y); ctx.lineTo(X1,y); ctx.stroke();
+    });
+
+    // Right boxes & labels
+    const cp = parseNum(el.cursorPrice.value);
+    levels.forEach(l=>{
+      const y = yAt(l.price);
+      const filled = isFinite(cp) && cp <= l.price;
+      ctx.fillStyle = filled ? 'rgba(16,185,129,0.35)' : 'rgba(16,185,129,1.0)'; // transparant = filled
+      const bx = X1 + 12, bw = gutter - 24, bh = 12;
+      ctx.fillRect(bx, y - bh/2, bw, bh);
+      ctx.fillStyle = '#0a1326'; // dark text for contrast
+      ctx.font = '12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(l.k ?? 0), bx + bw/2, y + 4);
+      ctx.textAlign = 'left';
+    });
+
+    // Draw candles (1D)
+    const w = Math.max(2, step*0.6);
+    valid.forEach((k,i)=>{
+      const up = k.c >= k.o;
+      const col = up ? '#b197ff' : '#ff6b6b';
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      const x = xAt(i);
+      // wick
+      ctx.beginPath(); ctx.moveTo(x, yAt(k.h)); ctx.lineTo(x, yAt(k.l)); ctx.stroke();
+      // body
+      ctx.fillStyle = col;
+      const y1 = yAt(k.o), y2 = yAt(k.c);
+      const yTop = Math.min(y1,y2), h = Math.max(1, Math.abs(y1-y2));
+      ctx.fillRect(x - w/2, yTop, w, h);
+    });
+
+    // Click-to-draw overlay hint
+    if(el.drawMode.checked){
+      ctx.fillStyle = 'rgba(124,58,237,0.12)';
+      ctx.fillRect(X0, Y0, X1-X0, Y1-Y0);
+      ctx.fillStyle = '#9fb0c7'; ctx.font='12px system-ui';
+      ctx.fillText(pendingOpen==null? 'Klik voor OPEN, daarna CLOSE' : 'Klik voor CLOSE', X0+6, Y0+16);
+    }
+  }
+
+  // Capital & ROI over time --------------------------------------------------
+  function calcFilledAtPrice(p){
+    let cap=0;
+    for(const L of levels){ if(p <= L.price) cap += (L.k||0); }
+    return cap;
+  }
+  function calcPnLUSDAtPrice(p){
+    const cv = parseNum(el.cv.value)||10;
+    let pnlCoin=0;
+    for(const L of levels){
+      if(p <= L.price){ // filled long entries at level price
+        pnlCoin += (L.k||0) * cv * (1/L.price - 1/p);
+      }
+    }
+    return pnlCoin * p;
+  }
+  function seriesCap(){
+    const xs = candles.map(k=>k.t||''); // labels
+    const ys = candles.map(k=> calcFilledAtPrice(k.c));
+    return {xs, ys};
+  }
+  function seriesROI(){
+    const xs = candles.map(k=>k.t||'');
+    const denom = (parseNum(el.Ktot.value)||0) * (parseNum(el.cv.value)||10); // total max notional
+    const ys = candles.map(k=>{
+      const pnl = calcPnLUSDAtPrice(k.c);
+      return denom>0 ? (pnl/denom)*100 : 0;
+    });
+    return {xs, ys};
+  }
+
+  function drawMiniSeries(canvas, series, color, days){
+    const ctx = autoPixelRatio(canvas);
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#0a1326'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = '#132048'; ctx.lineWidth = 1;
+    for(let i=0;i<5;i++){ const y=(H-20)*i/4+10; ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-10,y); ctx.stroke(); }
+
+    let {xs, ys} = series();
+    const n = xs.length;
+    if(days && days>0 && n>days){ xs = xs.slice(n-days); ys = ys.slice(n-days); }
+    const X0=50, X1=W-10, Y0=10, Y1=H-30;
+    const minY = Math.min(...ys, 0), maxY = Math.max(...ys, 1);
+    const step = (X1-X0) / Math.max(1, ys.length-1);
+    const xAt = i => X0 + i*step;
+    const yAt = v => Y1 - (v - minY)/Math.max(1e-9,(maxY-minY))*(Y1-Y0);
+
+    // area + line
+    ctx.beginPath();
+    ys.forEach((v,i)=>{ const x=xAt(i), y=yAt(v); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+    ctx.strokeStyle = color; ctx.lineWidth=2; ctx.stroke();
+    // area fill
+    const grad = ctx.createLinearGradient(0,Y0,0,Y1);
+    grad.addColorStop(0, color.replace('1)','0.35)'));
+    grad.addColorStop(1, color.replace('1)','0)'));
+    ctx.fillStyle = grad;
+    ctx.lineTo(X1, Y1); ctx.lineTo(X0, Y1); ctx.closePath(); ctx.fill();
+  }
+
+  // Allocation ---------------------------------------------------------------
+  function recomputeLevels(){
+    let low = parseNum(el.rangeLow.value)||0, high = parseNum(el.rangeHigh.value)||0;
+    if(high < low){ const t=high; high=low; low=t; el.rangeLow.value=low; el.rangeHigh.value=high; }
+    const N = Math.max(1, Math.floor(parseNum(el.N.value)||1));
+    const K = Math.max(0, Math.floor(parseNum(el.Ktot.value)||0));
+    const mode = el.allocMode.value;
+    const q = parseNum(el.q.value)||1.0;
+    const atrp = Math.max(0.0001, parseNum(el.atrp.value)||1.0);
+    const P = parseNum(el.p.value)||1.0;
+    const roundInt = el.roundInt.checked;
+
+    const step = (high - low) / (N - 1 || 1);
+    const prices = Array.from({length:N}, (_,i)=> high - i*step);
+    let weights = [];
+    if(mode === 'geom'){
+      weights = prices.map((_,i)=> Math.pow(q, i));
+    }else{
+      weights = prices.map((pL)=> {
+        const dPct = Math.abs((high - pL) / Math.max(1e-9, (high||1))) * 100;
+        const dUnits = dPct / atrp;
+        return Math.pow(Math.max(0, dUnits), P);
+      });
+    }
+    const sumW = weights.reduce((a,b)=>a+b,0)||1;
+    const exact = weights.map(w=> K * w / sumW);
+    let k = exact.slice();
+    if(roundInt){
+      k = exact.map(v=> Math.floor(v));
+      let r = K - k.reduce((a,b)=>a+b,0);
+      const fr = exact.map((v,i)=>({i, frac: v - Math.floor(v)})).sort((a,b)=> b.frac - a.frac || (b.i - a.i));
+      for(let j=0;j<r;j++){ k[fr[j % fr.length].i] += 1; }
+    }
+    levels = prices.map((price,i)=> ({ i:i+1, price, weight: weights[i], k: k[i] }));
+    renderAllocTable();
+    drawPrice(); drawCap(); drawROI();
+  }
+
+  function renderAllocTable(){
+    el.tblAlloc.innerHTML = "";
+    levels.forEach(L=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${L.i}</td><td>${fmt(L.price,4)}</td><td class="mono">${fmt(L.k,0)}</td><td>${fmt(L.weight,4)}</td>`;
+      el.tblAlloc.appendChild(tr);
+    });
+  }
+
+  // Candles table ------------------------------------------------------------
+  function createRow(k, i){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><input type="text" value="${k?.t||""}" placeholder="YYYY-MM-DD" /></td>
+      <td><input type="number" step="0.0001" value="${k?.o ?? ""}" /></td>
+      <td><input type="number" step="0.0001" value="${k?.h ?? ""}" /></td>
+      <td><input type="number" step="0.0001" value="${k?.l ?? ""}" /></td>
+      <td><input type="number" step="0.0001" value="${k?.c ?? ""}" /></td>
+      <td><button class="btn">✕</button></td>`;
+    const [tI,oI,hI,lI,cI] = Array.from(tr.querySelectorAll('input'));
+    const del = tr.querySelector('button');
+    function update(){
+      const o=parseNum(oI.value), h=parseNum(hI.value), l=parseNum(lI.value), c=parseNum(cI.value);
+      candles[i] = { t: tI.value, o, h, l, c };
+      // sync UI
+      if(Number(el.scrub.value||0)===i && isFinite(c)) el.cursorPrice.value = c;
+      drawPrice(); drawCap(); drawROI();
+    }
+    [tI,oI,hI,lI,cI].forEach(inp=> inp.addEventListener('input', update));
+    del.addEventListener('click', ()=>{
+      candles.splice(i,1);
+      rebuildTable();
+      el.scrub.max = Math.max(0, candles.length-1);
+      el.scrub.value = String(Math.max(0, Math.min(Number(el.scrub.value||0), candles.length-1)));
+      if(candles[Number(el.scrub.value||0)]) el.cursorPrice.value = candles[Number(el.scrub.value||0)].c || el.cursorPrice.value;
+      drawPrice(); drawCap(); drawROI();
+    });
+    return tr;
+  }
+  function rebuildTable(){
+    el.tblCandles.innerHTML = "";
+    candles.forEach((k,i)=> el.tblCandles.appendChild(createRow(k,i)));
+  }
+
+  // Seed generator -----------------------------------------------------------
+  function seed(){
+    const n = Math.max(1, Math.floor(parseNum(el.seedN.value)||90));
+    const avg = parseNum(el.seedAvg.value)||13.0;
+    const vol = clamp(parseNum(el.seedVol.value)||0.35, 0, 1);
+    const arr = [];
+    let p = avg;
+    const start = new Date(); start.setDate(start.getDate()-n+1);
+    for(let i=0;i<n;i++){
+      const t = new Date(start.getTime()); t.setDate(start.getDate()+i);
+      const drift = (Math.random()-0.5)*0.02; // small drift
+      const amp = (0.6+Math.random()*0.8)*vol; // 0..~1.4 * vol
+      const o = p;
+      const h = o*(1+0.01*amp + Math.random()*0.004);
+      const l = o*(1-0.01*amp - Math.random()*0.004);
+      const c = l + (h-l)*Math.random();
+      p = c*(1+drift);
+      arr.push({ t: t.toISOString().slice(0,10), o:+o.toFixed(4), h:+h.toFixed(4), l:+l.toFixed(4), c:+c.toFixed(4) });
+    }
+    candles = arr;
+    rebuildTable();
+    el.scrub.max = Math.max(0,candles.length-1);
+    el.scrub.value = String(Math.max(0,candles.length-1));
+    el.cursorPrice.value = candles[candles.length-1].c;
+    drawPrice(); drawCap(); drawROI();
+  }
+
+  // Capital & ROI draw -------------------------------------------------------
+  function drawCap(){ drawMiniSeries(el.chartCap, seriesCap, 'rgba(54,209,178,1)', tfCapN); }
+  function drawROI(){ drawMiniSeries(el.chartROI, seriesROI, 'rgba(168,85,247,1)', tfROIN); }
+
+  // Events -------------------------------------------------------------------
+  el.recalc.addEventListener('click', recomputeLevels);
+  el.seed.addEventListener('click', seed);
+  el.addC.addEventListener('click', ()=>{
+    const last = candles[candles.length-1];
+    const date = last?.t ? new Date(last.t) : new Date();
+    if(last?.t){ date.setDate(new Date(last.t).getDate()+1); }
+    const t = date.toISOString().slice(0,10);
+    candles.push({t, o:NaN, h:NaN, l:NaN, c:NaN});
+    rebuildTable();
+  });
+  el.clearC.addEventListener('click', ()=>{ candles=[]; rebuildTable(); drawPrice(); drawCap(); drawROI(); el.scrub.max=0; el.scrub.value=0; });
+
+  el.scrub.addEventListener('input', ()=>{
+    const i = Number(el.scrub.value||0);
+    if(candles[i] && isFinite(candles[i].c)){ el.cursorPrice.value = candles[i].c; drawPrice(); drawCap(); drawROI(); }
+  });
+  ['cursorPrice','rangeLow','rangeHigh','N','Ktot','allocMode','q','atrp','p','roundInt','cv'].forEach(id=>{
+    const node = document.getElementById(id);
+    node.addEventListener('input', ()=>{ if(id==='cursorPrice'){ drawPrice(); } else { recomputeLevels(); } });
+  });
+
+  // Timeframe buttons
+  function bindTF(groupEl, setter){
+    groupEl.addEventListener('click', (e)=>{
+      if(e.target.tagName!=='BUTTON') return;
+      groupEl.querySelectorAll('button').forEach(b=> b.classList.remove('active'));
+      e.target.classList.add('active');
+      const n = Number(e.target.dataset.n||0);
+      setter(n);
+    });
+  }
+  bindTF(el.tfCap, (n)=>{ tfCapN = n; drawCap(); });
+  bindTF(el.tfROI, (n)=>{ tfROIN = n; drawROI(); });
+
+  // Drawing on chart ---------------------------------------------------------
+  el.chartPrice.addEventListener('click', (evt)=>{
+    if(!el.drawMode.checked) return;
+    const rect = el.chartPrice.getBoundingClientRect();
+    const y = evt.clientY - rect.top;
+    const {lo, hi, Y0, Y1, X0, X1} = lastScale;
+    if(y<Y0 || y>Y1) return;
+    const price = hi - ( (y - Y0) / (Y1 - Y0) ) * (hi - lo);
+    if(pendingOpen==null){
+      // start new day candle
+      const last = candles[candles.length-1];
+      const date = last?.t ? new Date(last.t) : new Date();
+      if(last?.t){ date.setDate(new Date(last.t).getDate()+1); }
+      const t = date.toISOString().slice(0,10);
+      candles.push({ t, o:+price.toFixed(4), h:+price.toFixed(4), l:+price.toFixed(4), c:NaN });
+      pendingOpen = price;
+      rebuildTable();
+    }else{
+      // set close, derive H/L
+      const i = candles.length-1;
+      const o = pendingOpen;
+      const c = price;
+      const h = Math.max(o,c), l = Math.min(o,c);
+      candles[i] = { ...candles[i], h:+h.toFixed(4), l:+l.toFixed(4), c:+c.toFixed(4) };
+      pendingOpen = null;
+      rebuildTable();
+      el.scrub.max = Math.max(0,candles.length-1);
+      el.scrub.value = String(Math.max(0,candles.length-1));
+      el.cursorPrice.value = candles[candles.length-1].c;
+    }
+    drawPrice(); drawCap(); drawROI();
+  });
+
+  window.addEventListener('resize', ()=>{ drawPrice(); drawCap(); drawROI(); });
+
+  // Init ---------------------------------------------------------------------
+  recomputeLevels();
+  seed();
+})();</script>
+</body>
+</html>
