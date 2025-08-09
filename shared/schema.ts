@@ -39,6 +39,8 @@ export const gridLevels = pgTable("grid_levels", {
   contracts: integer("contracts").notNull(),
   weight: real("weight").notNull(),
   status: text("status").notNull().default('active'), // 'active' | 'partial' | 'filled'
+  filled: boolean("filled").notNull().default(false),
+  side: text("side").notNull().default('buy'), // 'buy' | 'sell'
 });
 
 // Zod schemas

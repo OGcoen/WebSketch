@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Chart, CandlestickChart } from '@/components/ui/chart';
+import TVChart from '../tv/TVChart';
 import { cn } from '@/lib/utils';
 import { 
   LineChart, 
@@ -552,104 +553,20 @@ export default function GridLab() {
 
           {/* Center Panel - Price Chart */}
           <section className="xl:col-span-6 glass-card rounded-2xl p-5" data-testid="price-chart-panel">
-            {/* TradingView-style Chart Header */}
-            <div className="flex items-center justify-between mb-4 bg-trading-bg-panel rounded-lg p-3 border border-trading-border-primary">
-              <div className="flex items-center space-x-4">
-                <h3 className="text-sm font-medium text-trading-text-secondary flex items-center">
-                  <BarChart3 className="text-chart-price mr-2" size={16} />
-                  Price Action & Grid Levels
-                </h3>
-                
-                {/* TradingView-style Timeframe Controls */}
-                <div className="flex items-center space-x-1 bg-trading-bg-secondary rounded-md p-1">
-                  {['1m', '5m', '15m', '1h', '4h', '1D', '1W'].map((tf) => (
-                    <Button
-                      key={tf}
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        'px-3 py-1 text-xs font-medium rounded text-trading-text-muted hover:text-trading-text-primary hover:bg-trading-bg-hover',
-                        tf === '1D' && 'bg-trading-accent-primary text-white hover:bg-trading-accent-primary/80'
-                      )}
-                      data-testid={`button-timeframe-${tf}`}
-                    >
-                      {tf}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {/* Zoom Controls */}
-                <div className="flex items-center space-x-1 bg-trading-bg-secondary rounded-md p-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-2 text-trading-text-muted hover:text-trading-text-primary"
-                    data-testid="button-zoom-in"
-                  >
-                    <ZoomIn className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-2 text-trading-text-muted hover:text-trading-text-primary"
-                    data-testid="button-zoom-out"
-                  >
-                    <ZoomOut className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-2 text-trading-text-muted hover:text-trading-text-primary"
-                    data-testid="button-reset-zoom"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </Button>
-                </div>
-                
-                {/* Chart Type Indicators */}
-                <div className="flex items-center space-x-4 text-xs text-trading-text-muted">
-                  <div className="flex items-center space-x-2">
-                    <div className="legend-dot bg-chart-price"></div>
-                    <span>Candlesticks</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="legend-dot bg-chart-grid"></div>
-                    <span>Grid Orders</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-0.5 bg-yellow-400"></div>
-                    <span>Current Price</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="chart-container mb-4 relative" style={{ height: '400px' }}>
-              <div className="absolute top-2 right-2 text-xs text-trading-text-muted z-10">
-                Right axis: contracts per level (green: available, faded: filled)
-              </div>
-              {drawMode && (
-                <div className="absolute top-2 left-2 px-3 py-2 bg-trading-accent-primary/20 border border-trading-accent-primary/50 rounded-lg text-xs text-trading-accent-primary z-10">
-                  <div className="flex items-center space-x-2">
-                    <Circle className="w-3 h-3 animate-pulse" />
-                    <span>
-                      {pendingOpen === null 
-                        ? "Click to set OPEN price" 
-                        : `Open: $${pendingOpen.toFixed(4)} - Click to set CLOSE price`}
-                    </span>
-                  </div>
-                </div>
-              )}
-              <CandlestickChart
-                candles={candles}
-                gridLevels={gridLevels}
-                currentPrice={currentPrice}
-                onChartClick={handleChartClick}
-                className="w-full h-full"
-              />
-            </div>
+            <TVChart
+              candles={candles.map(c => ({
+                t: c.date,
+                o: c.open,
+                h: c.high,
+                l: c.low,
+                c: c.close
+              }))}
+              gridLevels={gridLevels}
+              currentPrice={currentPrice}
+              onChartClick={handleChartClick}
+              drawMode={drawMode}
+              pendingOpen={pendingOpen}
+            />
             
             {/* Chart Controls */}
             <div className="flex flex-wrap items-center gap-4 text-sm">

@@ -6,6 +6,8 @@ export interface GridLevel {
   contracts: number;
   weight: number;
   status: 'active' | 'partial' | 'filled';
+  filled: boolean;
+  side: 'buy' | 'sell';
 }
 
 export interface PerformanceMetrics {
@@ -67,6 +69,8 @@ export function calculateGridLevels(params: GridCalculationParams): GridLevel[] 
     contracts: Math.round(contracts[i]),
     weight: weights[i],
     status: 'active' as const,
+    filled: false,
+    side: 'buy' as const,
   }));
 }
 
@@ -136,10 +140,14 @@ export function generateSeedCandles(avgPrice: number, days: number, volatility: 
 }
 
 export function updateGridLevelStatus(gridLevels: GridLevel[], currentPrice: number): GridLevel[] {
-  return gridLevels.map(level => ({
-    ...level,
-    status: currentPrice <= level.price ? 'filled' : 'active'
-  }));
+  return gridLevels.map(level => {
+    const filled = currentPrice <= level.price;
+    return {
+      ...level,
+      status: filled ? 'filled' : 'active',
+      filled: filled
+    };
+  });
 }
 
 export function calculatePerformanceMetrics(
