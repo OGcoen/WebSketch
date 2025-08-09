@@ -213,12 +213,21 @@ export function CandlestickChart({
           chartRef.current.style.cursor = elements.length > 0 ? 'pointer' : 'default';
         }
       },
-      onClick: (event) => {
-        if (!onChartClick || !chartInstance.current || !event.native) return;
+      onClick: (event, activeElements, chart) => {
+        if (!onChartClick) return;
         
-        const chart = chartInstance.current;
-        const canvasPosition = ChartJS.helpers.getRelativePosition(event.native as MouseEvent, chart);
-        const dataY = chart.scales.y.getValueForPixel(canvasPosition.y);
+        // Get the canvas element and event position
+        const canvas = chart.canvas;
+        const rect = canvas.getBoundingClientRect();
+        const nativeEvent = event.native as MouseEvent;
+        
+        if (!nativeEvent) return;
+        
+        const x = nativeEvent.clientX - rect.left;
+        const y = nativeEvent.clientY - rect.top;
+        
+        // Convert pixel position to data value
+        const dataY = chart.scales.y.getValueForPixel(y);
         
         if (typeof dataY === 'number') {
           onChartClick(dataY);

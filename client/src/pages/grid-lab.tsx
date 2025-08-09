@@ -569,6 +569,18 @@ export default function GridLab() {
               <div className="absolute top-2 right-2 text-xs text-trading-text-muted z-10">
                 Right axis: contracts per level (green: available, faded: filled)
               </div>
+              {drawMode && (
+                <div className="absolute top-2 left-2 px-3 py-2 bg-trading-accent-primary/20 border border-trading-accent-primary/50 rounded-lg text-xs text-trading-accent-primary z-10">
+                  <div className="flex items-center space-x-2">
+                    <Circle className="w-3 h-3 animate-pulse" />
+                    <span>
+                      {pendingOpen === null 
+                        ? "Click to set OPEN price" 
+                        : `Open: $${pendingOpen.toFixed(4)} - Click to set CLOSE price`}
+                    </span>
+                  </div>
+                </div>
+              )}
               <CandlestickChart
                 candles={candles}
                 gridLevels={gridLevels}
