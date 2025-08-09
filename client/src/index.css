@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark Trading Theme Colors */
+  --bg-primary: hsl(220, 20%, 6%);
+  --bg-secondary: hsl(220, 20%, 9%);
+  --bg-panel: hsl(220, 20%, 11%);
+  --bg-card: hsl(220, 15%, 11%);
+  --border-primary: hsl(220, 15%, 17%);
+  --border-secondary: hsl(220, 10%, 25%);
+  
+  /* Text Colors */
+  --text-primary: hsl(210, 25%, 90%);
+  --text-secondary: hsl(210, 15%, 70%);
+  --text-muted: hsl(210, 10%, 60%);
+  --text-inverse: hsl(220, 20%, 6%);
+  
+  /* Accent Colors */
+  --accent-primary: hsl(260, 75%, 65%);
+  --accent-secondary: hsl(190, 85%, 50%);
+  --accent-success: hsl(155, 75%, 55%);
+  --accent-danger: hsl(355, 85%, 60%);
+  
+  /* Chart Colors */
+  --chart-price: hsl(240, 80%, 75%);
+  --chart-grid: hsl(220, 25%, 45%);
+  --chart-capital: hsl(170, 70%, 60%);
+  --chart-roi: hsl(280, 70%, 65%);
+  
+  /* Shadcn overrides */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --card: var(--bg-card);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-panel);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-primary);
+  --primary-foreground: var(--text-inverse);
+  --secondary: var(--bg-panel);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-secondary);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--bg-panel);
+  --accent-foreground: var(--accent-primary);
+  --destructive: var(--accent-danger);
+  --destructive-foreground: var(--text-inverse);
+  --border: var(--border-primary);
+  --input: var(--bg-panel);
+  --ring: var(--accent-primary);
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    font-feature-settings: "tnum";
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background: linear-gradient(180deg, hsl(220, 20%, 6%) 0%, hsl(220, 18%, 8%) 55%, hsl(220, 20%, 7%) 100%);
+    font-variant-numeric: tabular-nums;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.06) 100%);
+    border: 1px solid var(--border-primary);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  }
+  
+  .hero-gradient {
+    background: 
+      radial-gradient(1200px 300px at 20% 0%, hsla(260, 75%, 65%, 0.18) 0%, transparent 50%),
+      radial-gradient(800px 200px at 80% 0%, hsla(190, 85%, 50%, 0.15) 0%, transparent 50%);
+  }
+  
+  .btn-gradient {
+    background: linear-gradient(90deg, hsla(260, 75%, 65%, 0.9), hsla(190, 85%, 50%, 0.9));
+  }
+  
+  .input-focus:focus {
+    border-color: var(--border-secondary);
+    box-shadow: 0 0 0 2px hsla(260, 75%, 65%, 0.25);
+  }
+  
+  .chart-container {
+    position: relative;
+    background: hsl(220, 22%, 8%);
+    border: 1px solid hsl(220, 18%, 15%);
+    border-radius: 12px;
+  }
+  
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+  
+  .slider {
+    appearance: none;
+    height: 6px;
+    background: var(--border-primary);
+    border-radius: 6px;
+    outline: none;
+  }
+  
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  
+  .table-header {
+    background: hsl(220, 25%, 10%);
+    color: var(--text-secondary);
+  }
+  
+  .data-table td, .data-table th {
+    border-top: 1px solid var(--border-primary);
+  }
+  
+  .positive { 
+    color: var(--accent-success); 
+  }
+  
+  .negative { 
+    color: var(--accent-danger); 
+  }
+  
+  .kpi-value {
+    font-size: 1.375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .text-chart-price { color: var(--chart-price); }
+  .text-chart-grid { color: var(--chart-grid); }
+  .text-chart-capital { color: var(--chart-capital); }
+  .text-chart-roi { color: var(--chart-roi); }
+  .bg-chart-price { background-color: var(--chart-price); }
+  .bg-chart-grid { background-color: var(--chart-grid); }
+  .bg-chart-capital { background-color: var(--chart-capital); }
+  .bg-chart-roi { background-color: var(--chart-roi); }
+}
